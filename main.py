@@ -24,6 +24,13 @@ logging.basicConfig(
 )
 logger = logging.getLogger("main")
 
+# Export FastAPI `app` for Vercel serverless function entrypoint compliance
+try:
+    from api.index import app
+except Exception as exc:
+    logger.warning(f"Could not import FastAPI app for serverless mode: {exc}")
+    app = None
+
 
 async def main():
     logger.info("Initializing Telegram Software Store Bot...")
@@ -57,6 +64,7 @@ async def main():
         logger.warning(f"Webhook deletion skipped: {err}")
 
     logger.info("Telegram Software Store Bot successfully initialized and ready.")
+    await dp.start_polling(bot)
 
 
 if __name__ == "__main__":

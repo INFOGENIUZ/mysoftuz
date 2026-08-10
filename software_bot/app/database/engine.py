@@ -15,7 +15,10 @@ if "sqlite" in settings.DATABASE_URL:
     db_file_path = settings.DATABASE_URL.replace("sqlite+aiosqlite:///", "")
     dir_name = os.path.dirname(db_file_path)
     if dir_name:
-        os.makedirs(dir_name, exist_ok=True)
+        try:
+            os.makedirs(dir_name, exist_ok=True)
+        except Exception as e:
+            logger.warning(f"Directory creation notice ({dir_name}): {e}")
 
 engine = create_async_engine(
     settings.DATABASE_URL,
