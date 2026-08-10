@@ -113,28 +113,32 @@ async def admin_user_view_handler(callback: CallbackQuery, is_admin: bool = Fals
 
         dl_count = await dl_service.get_user_download_count(user.telegram_id)
 
+    import html
     status_str = "🔴 Bloklangan" if user.is_blocked else "🟢 Faol"
     reg_date = user.created_at.strftime("%d.%m.%Y %H:%M") if user.created_at else "Noma'lum"
     last_act = user.last_activity.strftime("%d.%m.%Y %H:%M") if user.last_activity else "Noma'lum"
 
-    detail_text = (
-        f"👤 **FOYDALANUVCHI TAFSILOTLARI**\n\n"
-        f"• Ism: **{user.first_name or 'Noma\'lum'}**\n"
-        f"• Familiya: **{user.last_name or 'Kiritilmagan'}**\n"
-        f"• Username: **@{user.username or 'mavjud emas'}**\n"
-        f"• Telegram ID: **{user.telegram_id}**\n\n"
-        f"🟢 Holati: **{status_str}**\n"
-        f"📅 Ro'yxatdan o'tgan: **{reg_date}**\n"
-        f"⚡ Oxirgi faollik: **{last_act}**\n"
-        f"📥 Yuklab olishlar soni: **{dl_count} ta**\n\n"
-        f"🆔 DB ID: **{user.id}**"
-    )
+    first_n = html.escape(user.first_name or "Noma'lum")
+    last_n = html.escape(user.last_name or "Kiritilmagan")
+    user_n = f"@{html.escape(user.username)}" if user.username else "mavjud emas"
 
+    detail_text = (
+        f"👤 <b>FOYDALANUVCHI TAFSILOTLARI</b>\n\n"
+        f"• Ism: <b>{first_n}</b>\n"
+        f"• Familiya: <b>{last_n}</b>\n"
+        f"• Username: <b>{user_n}</b>\n"
+        f"• Telegram ID: <code>{user.telegram_id}</code>\n\n"
+        f"🟢 Holati: <b>{status_str}</b>\n"
+        f"📅 Ro'yxatdan o'tgan: <b>{reg_date}</b>\n"
+        f"⚡ Oxirgi faollik: <b>{last_act}</b>\n"
+        f"📥 Yuklab olishlar soni: <b>{dl_count} ta</b>\n\n"
+        f"🆔 DB ID: <b>{user.id}</b>"
+    )
 
     kb = build_admin_user_detail_keyboard(user, user_role=admin_role)
 
     if callback.message:
-        await callback.message.edit_text(text=detail_text, reply_markup=kb, parse_mode="Markdown")
+        await callback.message.edit_text(text=detail_text, reply_markup=kb, parse_mode="HTML")
 
 
 @router.callback_query(F.data.startswith("admin:user:downloads:"))
@@ -162,14 +166,15 @@ async def admin_user_downloads_handler(callback: CallbackQuery, is_admin: bool =
             user_telegram_id=user.telegram_id, page=1, page_size=20
         )
 
-    name_display = user.first_name or "Foydalanuvchi"
+    name_display = html.escape(user.first_name or "Foydalanuvchi")
     if not downloads_list:
-        text = f"📥 **{name_display.upper()} YUKLAB OLISHLARI**\n\nUshbu foydalanuvchi hali hech qanday dastur yuklab olmagan."
+        text = f"📥 <b>{name_display.upper()} YUKLAB OLISHLARI</b>\n\nUshbu foydalanuvchi hali hech qanday dastur yuklab olmagan."
     else:
-        text = f"📥 **{name_display.upper()} YUKLAB OLISHLARI ({len(downloads_list)} ta):**\n\n"
+        text = f"📥 <b>{name_display.upper()} YUKLAB OLISHLARI ({len(downloads_list)} ta):</b>\n\n"
         for dl, prog in downloads_list:
             created_str = dl.created_at.strftime("%d.%m.%Y %H:%M") if dl.created_at else ""
-            text += f"• 💻 **{prog.name}** (`v{prog.version or '1.0'}`) — _{created_str}_\n"
+            p_name = html.escape(prog.name)
+            text += f"• 💻 <b>{p_name}</b> (<code>v{prog.version or '1.0'}</code>) — <i>{created_str}</i>\n"
 
     from aiogram.utils.keyboard import InlineKeyboardBuilder
     from aiogram.types import InlineKeyboardButton
@@ -177,7 +182,7 @@ async def admin_user_downloads_handler(callback: CallbackQuery, is_admin: bool =
     builder.row(InlineKeyboardButton(text="🔙 Foydalanuvchiga qaytish", callback_data=f"admin:user:view:{user.id}"))
 
     if callback.message:
-        await callback.message.edit_text(text=text, reply_markup=builder.as_markup(), parse_mode="Markdown")
+        await callback.message.edit_text(text=text, reply_markup=builder.as_markup(), parse_mode="HTML")
 
 
 # -----------------------------------------------------------------------------

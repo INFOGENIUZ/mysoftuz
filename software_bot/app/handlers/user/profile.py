@@ -50,30 +50,31 @@ async def user_profile_main_handler(event: Message | CallbackQuery):
         profile_service = UserProfileService(session)
         summary = await profile_service.get_profile_summary(user_id)
 
-    name_str = summary.user.first_name or "Foydalanuvchi"
-    username_str = f"@{summary.user.username}" if summary.user.username else "Mavjud emas"
+    import html
+    name_str = html.escape(summary.user.first_name or "Foydalanuvchi")
+    username_str = f"@{html.escape(summary.user.username)}" if summary.user.username else "Mavjud emas"
     created_str = summary.user.created_at.strftime("%d.%m.%Y") if summary.user.created_at else "Noma'lum"
 
     dashboard_text = (
-        f"👤 **SHAXSIY KABINET**\n\n"
-        f"👤 **Ism:** {name_str}\n"
-        f"🌐 **Username:** {username_str}\n"
-        f"🆔 **ID:** `{user_id}`\n\n"
-        f"📊 **FAOLIYAT VA STATISTIKA:**\n"
-        f"📥 Yuklab olishlar: **{summary.downloads_count}**\n"
-        f"⭐ Sevimlilar: **{summary.favorites_count}**\n"
-        f"⭐ Baholar: **{summary.ratings_count}**\n"
-        f"💬 Sharhlar: **{summary.reviews_count}**\n"
-        f"🔔 Yangi bildirishnomalar: **{summary.unread_notifications_count}**\n\n"
-        f"📅 **Ro'yxatdan o'tgan sana:** {created_str}"
+        f"👤 <b>SHAXSIY KABINET</b>\n\n"
+        f"👤 <b>Ism:</b> {name_str}\n"
+        f"🌐 <b>Username:</b> {username_str}\n"
+        f"🆔 <b>ID:</b> <code>{user_id}</code>\n\n"
+        f"📊 <b>FAOLIYAT VA STATISTIKA:</b>\n"
+        f"📥 Yuklab olishlar: <b>{summary.downloads_count}</b>\n"
+        f"⭐ Sevimlilar: <b>{summary.favorites_count}</b>\n"
+        f"⭐ Baholar: <b>{summary.ratings_count}</b>\n"
+        f"💬 Sharhlar: <b>{summary.reviews_count}</b>\n"
+        f"🔔 Yangi bildirishnomalar: <b>{summary.unread_notifications_count}</b>\n\n"
+        f"📅 <b>Ro'yxatdan o'tgan sana:</b> {created_str}"
     )
 
     kb = build_user_profile_dashboard_keyboard(summary.unread_notifications_count)
 
     if isinstance(event, Message):
-        await event.answer(dashboard_text, reply_markup=kb, parse_mode="Markdown")
+        await event.answer(dashboard_text, reply_markup=kb, parse_mode="HTML")
     elif isinstance(event, CallbackQuery) and event.message:
-        await event.message.edit_text(dashboard_text, reply_markup=kb, parse_mode="Markdown")
+        await event.message.edit_text(dashboard_text, reply_markup=kb, parse_mode="HTML")
 
 
 # -----------------------------------------------------------------------------
