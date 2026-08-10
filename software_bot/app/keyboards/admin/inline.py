@@ -51,9 +51,8 @@ def build_admin_categories_keyboard(
     )
 
     for cat, count in categories_with_counts:
-        status_icon = "🟢" if cat.is_active else "🔴"
-        icon_str = f"{cat.icon} " if cat.icon else ""
-        btn_text = f"{status_icon} {icon_str}{cat.name} ({count} ta)"
+        icon_str = f"{cat.icon} " if cat.icon else "📂 "
+        btn_text = f"{icon_str}{cat.name} ({count} ta)"
         builder.row(
             InlineKeyboardButton(text=btn_text, callback_data=f"admin:category:view:{cat.id}")
         )
@@ -171,9 +170,8 @@ def build_admin_programs_keyboard(
     )
 
     for prog in programs:
-        status_icon = "🟢" if prog.is_active else "🔴"
         ver_str = f" ({prog.version})" if prog.version else ""
-        btn_text = f"{status_icon} {prog.name}{ver_str}"
+        btn_text = f"💻 {prog.name}{ver_str}"
         builder.row(
             InlineKeyboardButton(text=btn_text, callback_data=f"admin:program:view:{prog.id}")
         )
