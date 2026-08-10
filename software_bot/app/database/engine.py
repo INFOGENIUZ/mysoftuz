@@ -118,13 +118,29 @@ async def init_db() -> None:
         await conn.run_sync(Base.metadata.create_all)
     logger.info("Database schema initialized successfully.")
 
-    # Seed default categories, composite indexes & migrate version data
+    # Seed default categories, composite indexes, super admins & migrate version data
     from app.services.category_service import CategoryService
+    from app.database.models.admin import Admin
     async with async_session_maker() as session:
         cat_service = CategoryService(session)
         seeded = await cat_service.seed_default_categories()
         if seeded:
             logger.info(f"Seeded {len(seeded)} default categories.")
+
+        admin_ids_to_seed = settings.ADMIN_IDS or [8887751785]
+        for admin_id in admin_ids_to_seed:
+            stmt = select(Admin).where(Admin.telegram_id == admin_id)
+            existing_admin = (await session.execute(stmt)).scalar_one_or_none()
+            if not existing_admin:
+                new_admin = Admin(
+                    telegram_id=admin_id,
+                    full_name="Super Admin",
+                    role="super_admin",
+                    is_active=True
+                )
+                session.add(new_admin)
+                logger.info(f"Seeded Super Admin ID: {admin_id}")
+        await session.commit()
 
         await ensure_composite_indexes(session)
         await migrate_program_versions_if_needed(session)
