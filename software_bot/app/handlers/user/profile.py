@@ -34,8 +34,19 @@ async def user_profile_main_handler(event: Message | CallbackQuery):
     if isinstance(event, CallbackQuery):
         await event.answer()
 
-    user_id = event.from_user.id
+    tg_user = event.from_user
+    user_id = tg_user.id
     async with async_session_maker() as session:
+        from app.services.user_service import UserService
+        user_service = UserService(session)
+        await user_service.get_or_create_user(
+            telegram_id=user_id,
+            first_name=tg_user.first_name or "Foydalanuvchi",
+            last_name=tg_user.last_name,
+            username=tg_user.username,
+            language_code=tg_user.language_code
+        )
+
         profile_service = UserProfileService(session)
         summary = await profile_service.get_profile_summary(user_id)
 

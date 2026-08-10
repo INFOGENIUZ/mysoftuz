@@ -37,7 +37,7 @@ class UserProfileService:
         res = await self.session.execute(stmt)
         uid = res.scalar_one_or_none()
         if not uid:
-            user = User(telegram_id=telegram_id)
+            user = User(telegram_id=telegram_id, first_name="Foydalanuvchi")
             self.session.add(user)
             await self.session.commit()
             await self.session.refresh(user)

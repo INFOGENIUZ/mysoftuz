@@ -137,6 +137,49 @@ async def admin_user_view_handler(callback: CallbackQuery, is_admin: bool = Fals
         await callback.message.edit_text(text=detail_text, reply_markup=kb, parse_mode="Markdown")
 
 
+@router.callback_query(F.data.startswith("admin:user:downloads:"))
+async def admin_user_downloads_handler(callback: CallbackQuery, is_admin: bool = False):
+    if not is_admin:
+        await callback.answer("⛔ Sizda ushbu bo'limga kirish huquqi yo'q.", show_alert=True)
+        return
+    await callback.answer()
+
+    try:
+        user_db_id = int(callback.data.split(":")[-1])
+    except ValueError:
+        return
+
+    async with async_session_maker() as session:
+        user_service = UserService(session)
+        dl_service = DownloadService(session)
+
+        user = await user_service.get_user_by_id(user_db_id)
+        if not user:
+            await safe_answer_callback(callback, "⚠️ Foydalanuvchi topilmadi")
+            return
+
+        downloads_list, total_pages = await dl_service.get_user_downloads_unique_paginated(
+            user_telegram_id=user.telegram_id, page=1, page_size=20
+        )
+
+    name_display = user.first_name or "Foydalanuvchi"
+    if not downloads_list:
+        text = f"📥 **{name_display.upper()} YUKLAB OLISHLARI**\n\nUshbu foydalanuvchi hali hech qanday dastur yuklab olmagan."
+    else:
+        text = f"📥 **{name_display.upper()} YUKLAB OLISHLARI ({len(downloads_list)} ta):**\n\n"
+        for dl, prog in downloads_list:
+            created_str = dl.created_at.strftime("%d.%m.%Y %H:%M") if dl.created_at else ""
+            text += f"• 💻 **{prog.name}** (`v{prog.version or '1.0'}`) — _{created_str}_\n"
+
+    from aiogram.utils.keyboard import InlineKeyboardBuilder
+    from aiogram.types import InlineKeyboardButton
+    builder = InlineKeyboardBuilder()
+    builder.row(InlineKeyboardButton(text="🔙 Foydalanuvchiga qaytish", callback_data=f"admin:user:view:{user.id}"))
+
+    if callback.message:
+        await callback.message.edit_text(text=text, reply_markup=builder.as_markup(), parse_mode="Markdown")
+
+
 # -----------------------------------------------------------------------------
 # User Search
 # -----------------------------------------------------------------------------
