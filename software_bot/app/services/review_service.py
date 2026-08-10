@@ -155,3 +155,9 @@ class ReviewService:
         self.session.add(report)
         await self.session.commit()
         return True
+
+    async def get_review_by_id(self, review_id: int) -> Optional[ProgramReview]:
+        """Fetch review by ID."""
+        stmt = select(ProgramReview).where(ProgramReview.id == review_id)
+        res = await self.session.execute(stmt)
+        return res.scalar_one_or_none()

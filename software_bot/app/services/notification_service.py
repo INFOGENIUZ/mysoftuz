@@ -156,3 +156,13 @@ class NotificationService:
         res = await self.session.execute(stmt)
         await self.session.commit()
         return res.rowcount
+
+    async def get_notification_by_id(self, notif_id: int) -> Optional[UserNotification]:
+        """Fetch notification by ID and mark it as read."""
+        stmt = select(UserNotification).where(UserNotification.id == notif_id)
+        res = await self.session.execute(stmt)
+        notif = res.scalar_one_or_none()
+        if notif and not notif.is_read:
+            notif.is_read = True
+            await self.session.commit()
+        return notif

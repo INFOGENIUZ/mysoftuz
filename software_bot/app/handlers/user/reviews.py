@@ -137,6 +137,45 @@ async def reviews_page_handler(callback: CallbackQuery):
         await callback.message.edit_text(text, reply_markup=kb, parse_mode="Markdown")
 
 
+@router.callback_query(F.data.startswith("review:view:"))
+async def review_view_detail_handler(callback: CallbackQuery):
+    await callback.answer()
+    try:
+        review_id = int(callback.data.split(":")[-1])
+    except ValueError:
+        return
+
+    async with async_session_maker() as session:
+        review_service = ReviewService(session)
+        review = await review_service.get_review_by_id(review_id)
+        prog_service = ProgramService(session)
+        program = await prog_service.get_program_by_id(review.program_id) if review else None
+
+    if not review or not program:
+        await callback.answer("⚠️ Sharh topilmadi.", show_alert=True)
+        return
+
+    author = f"@{review.user.username}" if (review.user and review.user.username) else "Anonim foydalanuvchi"
+    created_str = review.created_at.strftime("%d.%m.%Y") if review.created_at else ""
+
+    text = (
+        f"💬 **{program.name.upper()} SHARHI**\n"
+        f"👤 Muallif: **{author}**\n"
+        f"📅 Sana: **{created_str}**\n"
+        f"━━━━━━━━━━━━━━━━━━━━━\n\n"
+        f"“{review.text}”"
+    )
+
+    from aiogram.utils.keyboard import InlineKeyboardBuilder
+    from aiogram.types import InlineKeyboardButton
+    builder = InlineKeyboardBuilder()
+    builder.row(InlineKeyboardButton(text="💬 Sharhlar ro'yxati", callback_data=f"reviews:list:{program.id}"))
+    builder.row(InlineKeyboardButton(text="💻 Dastur sahifasi", callback_data=f"program:view:{program.id}"))
+
+    if callback.message:
+        await callback.message.edit_text(text=text, reply_markup=builder.as_markup(), parse_mode="Markdown")
+
+
 @router.callback_query(F.data.startswith("review:add:"))
 async def review_add_prompt(callback: CallbackQuery, state: FSMContext):
     await callback.answer()

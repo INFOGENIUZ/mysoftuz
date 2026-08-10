@@ -15,7 +15,7 @@ router = Router(name="user_favorites_router")
 
 
 @router.message(F.text == "⭐ Sevimlilarim")
-@router.callback_query(F.data == "favorites:list")
+@router.callback_query(F.data.in_({"profile:favorites", "favorites:list"}))
 async def user_favorites_menu_handler(event: Message | CallbackQuery, state: FSMContext):
     if not event.from_user:
         return

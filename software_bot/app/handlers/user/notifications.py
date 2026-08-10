@@ -51,6 +51,66 @@ async def user_notifications_center_handler(event: Message | CallbackQuery):
         await event.message.edit_text(text=text, reply_markup=kb, parse_mode="Markdown")
 
 
+@router.callback_query(F.data.startswith("notification:page:"))
+async def notification_page_handler(callback: CallbackQuery):
+    await callback.answer()
+    try:
+        page = int(callback.data.split(":")[-1])
+    except ValueError:
+        page = 1
+
+    if not callback.from_user:
+        return
+
+    user_id = callback.from_user.id
+    async with async_session_maker() as session:
+        notif_service = NotificationService(session)
+        notifs, total_pages = await notif_service.get_user_notifications_paginated(user_id, page=page, page_size=5)
+        unread_count = await notif_service.get_unread_count(user_id)
+
+    unread_str = f"🔴 **{unread_count} ta yangi**\n\n" if unread_count > 0 else "🟢 Barchasi o'qilgan\n\n"
+    text = f"🔔 **BILDIRISHNOMALAR MARKAZI** (Sahifa {page}/{total_pages})\n\n{unread_str}Bildirishnomalar ro'yxati:"
+    kb = build_user_notifications_keyboard(notifs, current_page=page, total_pages=total_pages)
+
+    if callback.message:
+        await callback.message.edit_text(text=text, reply_markup=kb, parse_mode="Markdown")
+
+
+@router.callback_query(F.data.startswith("notification:view:"))
+async def notification_view_detail_handler(callback: CallbackQuery):
+    await callback.answer()
+    try:
+        notif_id = int(callback.data.split(":")[-1])
+    except ValueError:
+        return
+
+    async with async_session_maker() as session:
+        notif_service = NotificationService(session)
+        notif = await notif_service.get_notification_by_id(notif_id)
+
+    if not notif:
+        await callback.answer("⚠️ Bildirishnoma topilmadi.", show_alert=True)
+        return
+
+    created_str = notif.created_at.strftime("%d.%m.%Y %H:%M") if notif.created_at else ""
+    text = (
+        f"🔔 **{notif.title.upper()}**\n"
+        f"📅 _{created_str}_\n"
+        f"━━━━━━━━━━━━━━━━━━━━━\n\n"
+        f"{notif.message}"
+    )
+
+    from aiogram.utils.keyboard import InlineKeyboardBuilder
+    from aiogram.types import InlineKeyboardButton
+    builder = InlineKeyboardBuilder()
+    if notif.program_id:
+        builder.row(InlineKeyboardButton(text="💻 Dastur sahifasiga o'tish", callback_data=f"program:view:{notif.program_id}"))
+    builder.row(InlineKeyboardButton(text="🔙 Bildirishnomalar", callback_data="notification:list"))
+
+    if callback.message:
+        await callback.message.edit_text(text=text, reply_markup=builder.as_markup(), parse_mode="Markdown")
+
+
 @router.callback_query(F.data == "notification:mark_all_read")
 async def notification_mark_all_read_handler(callback: CallbackQuery):
     if not callback.from_user:

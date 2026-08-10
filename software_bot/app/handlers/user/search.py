@@ -160,7 +160,7 @@ user_search_page_handler = user_search_back_results
 # -----------------------------------------------------------------------------
 # Multi-Filters Menu & Controls
 # -----------------------------------------------------------------------------
-@router.callback_query(F.data == "search:filter:menu")
+@router.callback_query(F.data.in_({"search:filter:menu", "search:open_filter"}))
 async def filter_menu_handler(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
     data = await state.get_data()
@@ -296,7 +296,7 @@ async def filter_apply_handler(callback: CallbackQuery, state: FSMContext):
 # -----------------------------------------------------------------------------
 # Sort Modes Menu & Selection
 # -----------------------------------------------------------------------------
-@router.callback_query(F.data == "search:sort:menu")
+@router.callback_query(F.data.in_({"search:sort:menu", "search:open_sort"}))
 async def sort_menu_handler(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
     data = await state.get_data()
@@ -308,7 +308,10 @@ async def sort_menu_handler(callback: CallbackQuery, state: FSMContext):
 
 
 @router.callback_query(F.data.startswith("search:sort:set:"))
+@router.callback_query(F.data.startswith("search:sort:"))
 async def sort_set_handler(callback: CallbackQuery, state: FSMContext):
+    if callback.data in ("search:sort:menu", "search:open_sort"):
+        return await sort_menu_handler(callback, state)
     sort_mode = callback.data.split(":")[-1]
     await state.update_data(sort_mode=sort_mode, page=1)
     await callback.answer("↕️ Saralash yangilandi!")

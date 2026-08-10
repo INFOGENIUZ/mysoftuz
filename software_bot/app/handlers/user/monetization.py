@@ -162,3 +162,93 @@ async def user_premium_pay_confirm_handler(callback: CallbackQuery):
             await callback.message.edit_text(text, reply_markup=builder.as_markup(), parse_mode="Markdown")
     else:
         await callback.answer(f"❌ To'lov rad etildi: {msg}", show_alert=True)
+
+
+@router.callback_query(F.data == "user:premium:my_sub")
+async def user_premium_my_sub_handler(callback: CallbackQuery):
+    await callback.answer()
+    if not callback.from_user:
+        return
+
+    user_tg_id = callback.from_user.id
+    async with async_session_maker() as session:
+        user_service = UserService(session)
+        user = await user_service.get_user_by_telegram_id(user_tg_id)
+        if not user:
+            await callback.answer("⚠️ Foydalanuvchi topilmadi.", show_alert=True)
+            return
+
+        from app.database.models import Subscription
+        from sqlalchemy import select
+        stmt = (
+            select(Subscription)
+            .where(Subscription.user_id == user.id, Subscription.status == "ACTIVE")
+            .order_by(Subscription.expires_at.desc())
+            .limit(1)
+        )
+        res = await session.execute(stmt)
+        active_sub = res.scalar_one_or_none()
+
+    if active_sub:
+        exp_str = active_sub.expires_at.strftime("%d.%m.%Y %H:%M") if active_sub.expires_at else "Noma'lum"
+        text = (
+            "📜 **SHAXSIY OBUNANGIZ HAQIDA MA'LUMOT**\n\n"
+            "Status: **🟢 FAOL (ACTIVE)**\n"
+            f"Tugash sanasi: **{exp_str}**\n\n"
+            "🚀 Sizda barcha Premium imkoniyatlar faol!"
+        )
+    else:
+        text = (
+            "📜 **SHAXSIY OBUNANGIZ HAQIDA MA'LUMOT**\n\n"
+            "Status: **⚪ NOFAOL (INACTIVE)**\n\n"
+            "Sizda hozircha faol Premium obuna mavjud emas.\n"
+            "Tarif tanlash uchun quyidagi tugmani bosing:"
+        )
+
+    builder = InlineKeyboardBuilder()
+    builder.row(InlineKeyboardButton(text="⭐ Tariflarni ko'rish", callback_data="user:premium:plans"))
+    builder.row(InlineKeyboardButton(text="🔙 Premium menyu", callback_data="user:premium:menu"))
+
+    if callback.message:
+        await callback.message.edit_text(text, reply_markup=builder.as_markup(), parse_mode="Markdown")
+
+
+@router.callback_query(F.data == "user:purchases:history")
+async def user_purchases_history_handler(callback: CallbackQuery):
+    await callback.answer()
+    if not callback.from_user:
+        return
+
+    user_tg_id = callback.from_user.id
+    async with async_session_maker() as session:
+        user_service = UserService(session)
+        user = await user_service.get_user_by_telegram_id(user_tg_id)
+        if not user:
+            await callback.answer("⚠️ Foydalanuvchi topilmadi.", show_alert=True)
+            return
+
+        from app.database.models import Order
+        from sqlalchemy import select
+        stmt = (
+            select(Order)
+            .where(Order.user_id == user.id)
+            .order_by(Order.created_at.desc())
+            .limit(10)
+        )
+        res = await session.execute(stmt)
+        orders = list(res.scalars().all())
+
+    if not orders:
+        text = "💳 **XARIDLAR TARIHI**\n\nSiz hali hech qanday xarid amalga oshirmagansiz."
+    else:
+        text = "💳 **OXIRGI XARIDLARINGIZ TARIHI**\n\n"
+        for o in orders:
+            status_icon = "🟢" if o.status == "PAID" else ("🔴" if o.status == "FAILED" else "⏳")
+            created_str = o.created_at.strftime("%d.%m.%Y") if o.created_at else ""
+            text += f"{status_icon} `#ORD-{o.id:06d}` — **{o.amount:,} UZS** ({created_str})\n"
+
+    builder = InlineKeyboardBuilder()
+    builder.row(InlineKeyboardButton(text="🔙 Premium menyu", callback_data="user:premium:menu"))
+
+    if callback.message:
+        await callback.message.edit_text(text, reply_markup=builder.as_markup(), parse_mode="Markdown")

@@ -10,11 +10,25 @@ from app.database.models import Program, ProgramVersion
 
 logger = logging.getLogger(__name__)
 
-db_url = settings.DATABASE_URL
-if "libsql" in db_url or not db_url:
-    db_url = "sqlite+aiosqlite:////tmp/software_bot.db"
+db_url = settings.DATABASE_URL or "sqlite+aiosqlite:////tmp/software_bot.db"
 
-# Ensure data directory exists if relative path is used
+# Format PostgreSQL connection strings for asyncpg if needed
+if db_url.startswith("postgres://"):
+    db_url = db_url.replace("postgres://", "postgresql+asyncpg://", 1)
+elif db_url.startswith("postgresql://") and not db_url.startswith("postgresql+"):
+    db_url = db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+
+if "asyncpg" in db_url:
+    from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
+    parsed = urlparse(db_url)
+    qs = parse_qs(parsed.query)
+    qs.pop("channel_binding", None)
+    qs.pop("sslmode", None)
+    new_query = urlencode(qs, doseq=True)
+    db_url = urlunparse((parsed.scheme, parsed.netloc, parsed.path, parsed.params, new_query, parsed.fragment))
+
+
+# Ensure data directory exists if relative SQLite path is used
 if "sqlite+aiosqlite" in db_url:
     db_file_path = db_url.replace("sqlite+aiosqlite:///", "")
     dir_name = os.path.dirname(db_file_path)
@@ -34,7 +48,7 @@ engine = create_async_engine(
 # SQLite Production Hardening Listener
 @event.listens_for(engine.sync_engine, "connect")
 def set_sqlite_pragma(dbapi_connection, connection_record):
-    if "sqlite" in settings.DATABASE_URL:
+    if "sqlite" in db_url:
         try:
             cursor = dbapi_connection.cursor()
             cursor.execute("PRAGMA foreign_keys = ON;")
@@ -72,17 +86,19 @@ async def ensure_composite_indexes(session: AsyncSession) -> None:
 
 async def run_database_integrity_check(session: AsyncSession) -> Tuple[bool, str]:
     """
-    Executes SQLite 'PRAGMA integrity_check;' to verify database file health.
+    Executes 'PRAGMA integrity_check;' on SQLite to verify database file health.
     Returns tuple: (is_healthy, result_message)
     """
-    try:
-        res = await session.execute(text("PRAGMA integrity_check;"))
-        row = res.scalar()
-        is_ok = (row == "ok")
-        return is_ok, str(row)
-    except Exception as e:
-        logger.error(f"Integrity check failed: {e}")
-        return False, str(e)
+    if "sqlite" in db_url:
+        try:
+            res = await session.execute(text("PRAGMA integrity_check;"))
+            row = res.scalar()
+            is_ok = (row == "ok")
+            return is_ok, str(row)
+        except Exception as e:
+            logger.error(f"Integrity check failed: {e}")
+            return False, str(e)
+    return True, "ok (PostgreSQL)"
 
 
 async def migrate_program_versions_if_needed(session: AsyncSession) -> int:

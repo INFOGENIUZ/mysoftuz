@@ -11,7 +11,11 @@ router = Router(name="user_new_programs_router")
 
 
 @router.message(F.text == "🆕 Yangi dasturlar")
-async def user_new_programs_handler(message: Message, state: FSMContext):
+@router.callback_query(F.data.in_({"new:list", "new:main"}))
+async def user_new_programs_handler(event: Message | CallbackQuery, state: FSMContext):
+    if isinstance(event, CallbackQuery):
+        await event.answer()
+
     async with async_session_maker() as session:
         prog_service = ProgramService(session)
         programs, total_pages = await prog_service.get_new_programs_paginated(
@@ -21,12 +25,19 @@ async def user_new_programs_handler(message: Message, state: FSMContext):
     await NavigationContext.save_nav_context(state, source="new", page=1)
 
     if not programs:
-        await message.answer("🆕 **YANGI SIFATIDA QO'SHILGAN DASTURLAR**\n\nHozircha yangi dasturlar mavjud emas.")
+        empty_text = "🆕 **YANGI SIFATIDA QO'SHILGAN DASTURLAR**\n\nHozircha yangi dasturlar mavjud emas."
+        if isinstance(event, Message):
+            await event.answer(empty_text)
+        elif isinstance(event, CallbackQuery) and event.message:
+            await event.message.edit_text(empty_text, parse_mode="Markdown")
         return
 
     text = "🆕 **YANGI SIFATIDA QO'SHILGAN DASTURLAR**\n\nEng oxirgi qo'shilgan dasturlar ro'yxati:"
     kb = build_new_programs_keyboard(programs, current_page=1, total_pages=total_pages)
-    await message.answer(text=text, reply_markup=kb, parse_mode="Markdown")
+    if isinstance(event, Message):
+        await event.answer(text=text, reply_markup=kb, parse_mode="Markdown")
+    elif isinstance(event, CallbackQuery) and event.message:
+        await event.message.edit_text(text=text, reply_markup=kb, parse_mode="Markdown")
 
 
 new_programs_menu_handler = user_new_programs_handler

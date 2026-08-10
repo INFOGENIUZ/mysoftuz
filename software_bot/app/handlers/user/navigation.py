@@ -74,6 +74,18 @@ async def back_auto_handler(callback: CallbackQuery, state: FSMContext):
         cb_copy = callback.model_copy(update={"data": f"downloads:page:{page}"})
         await user_downloads_page_handler(cb_copy, state)
 
+    elif source == "favorites":
+        from app.handlers.user.favorites import user_favorites_page_handler
+        page = nav_ctx.get("page", 1)
+        cb_copy = callback.model_copy(update={"data": f"favorites:page:{page}"})
+        await user_favorites_page_handler(cb_copy, state)
+
+    elif source == "recent":
+        from app.handlers.user.recent import user_recent_page_handler
+        page = nav_ctx.get("page", 1)
+        cb_copy = callback.model_copy(update={"data": f"recent:page:{page}"})
+        await user_recent_page_handler(cb_copy, state)
+
     else:
         from app.handlers.user.categories import user_categories_list_handler
         await user_categories_list_handler(callback)

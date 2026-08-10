@@ -12,8 +12,8 @@ logger = logging.getLogger(__name__)
 router = Router(name="user_recent_router")
 
 
-@router.message(F.text == "🕘 Yaqinda ko'rganlarim")
-@router.callback_query(F.data == "recent:list")
+@router.message(F.text.in_({"🕘 Yaqinda ko'rganlarim", "🕘 Yaqinda ko'rilganlar"}))
+@router.callback_query(F.data.in_({"profile:recent", "recent:list"}))
 async def user_recent_menu_handler(event: Message | CallbackQuery, state: FSMContext):
     if not event.from_user:
         return
