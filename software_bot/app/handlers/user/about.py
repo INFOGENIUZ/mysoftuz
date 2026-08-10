@@ -15,7 +15,7 @@ async def about_menu_handler(event: Message | CallbackQuery):
     if isinstance(event, CallbackQuery):
         await event.answer()
 
-    support_username = "@admin_username"
+    support_username = "@texnotm_creator"
     async with async_session_maker() as session:
         stmt = select(BotSetting).where(BotSetting.key == "support_username")
         res = await session.execute(stmt)
