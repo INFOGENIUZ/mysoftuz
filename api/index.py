@@ -1,7 +1,6 @@
 import os
 import sys
 import logging
-from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, Response
 from aiogram import Bot, Dispatcher, types
 from aiogram.enums import ParseMode
@@ -22,6 +21,15 @@ from database.db import db
 from handlers import setup_routers
 from utils.set_bot_commands import set_default_commands
 
+from app.middlewares import (
+    UserTrackingMiddleware,
+    AntiSpamMiddleware,
+    ThrottlingMiddleware,
+    AdminMiddleware,
+    MaintenanceMiddleware,
+)
+from app.handlers.errors import router as errors_router
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -36,34 +44,42 @@ bot = Bot(
 )
 dp = Dispatcher(storage=MemoryStorage())
 
-# Include Routers
+# Register Global Errors Router
+dp.include_router(errors_router)
+
+# Register Middlewares (Order: UserTracking -> AntiSpam -> Throttling -> Admin -> Maintenance)
+dp.message.outer_middleware(UserTrackingMiddleware())
+dp.message.outer_middleware(AntiSpamMiddleware())
+dp.message.outer_middleware(ThrottlingMiddleware())
+dp.message.outer_middleware(AdminMiddleware())
+dp.message.outer_middleware(MaintenanceMiddleware())
+
+dp.callback_query.outer_middleware(UserTrackingMiddleware())
+dp.callback_query.outer_middleware(AntiSpamMiddleware())
+dp.callback_query.outer_middleware(ThrottlingMiddleware())
+dp.callback_query.outer_middleware(AdminMiddleware())
+dp.callback_query.outer_middleware(MaintenanceMiddleware())
+
+# Include Main Routers
 main_router = setup_routers()
 dp.include_router(main_router)
 
+_db_initialized = False
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    logger.info("Initializing Telegram Bot on Vercel Serverless...")
-    try:
-        if config.bot_token and config.bot_token not in (
-            "YOUR_TELEGRAM_BOT_TOKEN_HERE",
-            "123456789:ABCdefGhIJKlmNoPQRsTUVwxyZ",
-            "123456789:PlaceholderTokenForBuildOnly"
-        ):
+
+async def ensure_db_initialized():
+    global _db_initialized
+    if not _db_initialized:
+        try:
+            logger.info("Initializing database connection on Vercel Serverless request...")
             await db.connect()
             await set_default_commands(bot)
-        else:
-            logger.warning("BOT_TOKEN is missing or set to default placeholder.")
-    except Exception as err:
-        logger.error(f"Lifespan DB initialization error: {err}")
-    yield
-    try:
-        await bot.session.close()
-    except Exception:
-        pass
+            _db_initialized = True
+        except Exception as err:
+            logger.error(f"Error initializing DB in serverless request: {err}", exc_info=True)
 
 
-app = FastAPI(title="Telegram Software Store Bot", lifespan=lifespan)
+app = FastAPI(title="Telegram Software Store Bot")
 
 
 @app.get("/")
@@ -80,6 +96,7 @@ async def root():
 async def webhook(request: Request):
     if request.method == "POST":
         try:
+            await ensure_db_initialized()
             data = await request.json()
             update = types.Update(**data)
             await dp.feed_update(bot=bot, update=update)
