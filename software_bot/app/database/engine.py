@@ -10,18 +10,22 @@ from app.database.models import Program, ProgramVersion
 
 logger = logging.getLogger(__name__)
 
+db_url = settings.DATABASE_URL
+if "libsql" in db_url or not db_url:
+    db_url = "sqlite+aiosqlite:////tmp/software_bot.db"
+
 # Ensure data directory exists if relative path is used
-if "sqlite+aiosqlite" in settings.DATABASE_URL:
-    db_file_path = settings.DATABASE_URL.replace("sqlite+aiosqlite:///", "")
+if "sqlite+aiosqlite" in db_url:
+    db_file_path = db_url.replace("sqlite+aiosqlite:///", "")
     dir_name = os.path.dirname(db_file_path)
-    if dir_name and not dir_name.startswith("http"):
+    if dir_name and not dir_name.startswith("http") and not dir_name.startswith("/tmp"):
         try:
             os.makedirs(dir_name, exist_ok=True)
         except Exception as e:
             logger.warning(f"Directory creation notice ({dir_name}): {e}")
 
 engine = create_async_engine(
-    settings.DATABASE_URL,
+    db_url,
     echo=False,
     future=True
 )
