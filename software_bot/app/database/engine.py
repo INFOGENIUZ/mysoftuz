@@ -11,10 +11,10 @@ from app.database.models import Program, ProgramVersion
 logger = logging.getLogger(__name__)
 
 # Ensure data directory exists if relative path is used
-if "sqlite" in settings.DATABASE_URL:
+if "sqlite+aiosqlite" in settings.DATABASE_URL:
     db_file_path = settings.DATABASE_URL.replace("sqlite+aiosqlite:///", "")
     dir_name = os.path.dirname(db_file_path)
-    if dir_name:
+    if dir_name and not dir_name.startswith("http"):
         try:
             os.makedirs(dir_name, exist_ok=True)
         except Exception as e:
@@ -27,15 +27,16 @@ engine = create_async_engine(
 )
 
 
-# SQLite Production Hardening Listener (Foreign Keys, WAL mode, Busy Timeout, Synchronous Normal)
+# SQLite Production Hardening Listener
 @event.listens_for(engine.sync_engine, "connect")
 def set_sqlite_pragma(dbapi_connection, connection_record):
-    cursor = dbapi_connection.cursor()
-    cursor.execute("PRAGMA foreign_keys = ON;")
-    cursor.execute("PRAGMA journal_mode = WAL;")
-    cursor.execute("PRAGMA busy_timeout = 5000;")
-    cursor.execute("PRAGMA synchronous = NORMAL;")
-    cursor.close()
+    try:
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA foreign_keys = ON;")
+        cursor.execute("PRAGMA busy_timeout = 5000;")
+        cursor.close()
+    except Exception:
+        pass
 
 
 async_session_maker = async_sessionmaker(
