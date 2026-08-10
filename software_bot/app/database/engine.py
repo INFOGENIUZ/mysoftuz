@@ -30,13 +30,14 @@ engine = create_async_engine(
 # SQLite Production Hardening Listener
 @event.listens_for(engine.sync_engine, "connect")
 def set_sqlite_pragma(dbapi_connection, connection_record):
-    try:
-        cursor = dbapi_connection.cursor()
-        cursor.execute("PRAGMA foreign_keys = ON;")
-        cursor.execute("PRAGMA busy_timeout = 5000;")
-        cursor.close()
-    except Exception:
-        pass
+    if "sqlite" in settings.DATABASE_URL:
+        try:
+            cursor = dbapi_connection.cursor()
+            cursor.execute("PRAGMA foreign_keys = ON;")
+            cursor.execute("PRAGMA busy_timeout = 5000;")
+            cursor.close()
+        except Exception:
+            pass
 
 
 async_session_maker = async_sessionmaker(
