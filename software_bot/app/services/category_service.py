@@ -6,16 +6,17 @@ from app.utils.slug import generate_unique_slug
 
 
 DEFAULT_CATEGORIES = [
-    {"name": "🌐 Internet", "description": "Brauzerlar va tarmoq dasturlari", "sort_order": 1},
-    {"name": "🎨 Grafik dizayn", "description": "Rasm tahrirlash va dizayn dasturlari", "sort_order": 2},
-    {"name": "🎬 Video montaj", "description": "Video va audio montaj vositalari", "sort_order": 3},
-    {"name": "💻 Dasturlash", "description": "IDE lar va dasturlash vositalari", "sort_order": 4},
-    {"name": "📄 Office", "description": "Hujjatlar va matn tahrirlovchilari", "sort_order": 5},
-    {"name": "🛡 Xavfsizlik", "description": "Antiviruslar va xavfsizlik utilitalari", "sort_order": 6},
-    {"name": "🎮 Gaming", "description": "O'yinlar va kompyuter optimizatorlari", "sort_order": 7},
-    {"name": "🔧 Utilitalar", "description": "Tizim utilitalari va sozlamalar", "sort_order": 8},
-    {"name": "🗜 Arxivatorlar", "description": "Fayllarni siqish va arxivlash dasturlari", "sort_order": 9},
-    {"name": "📡 Drayverlar", "description": "Tizim va qurilma drayverlari", "sort_order": 10},
+    {"name": "Messenger", "icon": "💬", "description": "Messenjerlar va muloqot dasturlari", "sort_order": 1},
+    {"name": "Internet", "icon": "🌐", "description": "Brauzerlar va tarmoq dasturlari", "sort_order": 2},
+    {"name": "Grafik dizayn", "icon": "🎨", "description": "Rasm tahrirlash va dizayn dasturlari", "sort_order": 3},
+    {"name": "Video montaj", "icon": "🎬", "description": "Video va audio montaj vositalari", "sort_order": 4},
+    {"name": "Dasturlash", "icon": "💻", "description": "IDE lar va dasturlash vositalari", "sort_order": 5},
+    {"name": "Office", "icon": "📄", "description": "Hujjatlar va matn tahrirlovchilari", "sort_order": 6},
+    {"name": "Xavfsizlik", "icon": "🛡", "description": "Antiviruslar va xavfsizlik utilitalari", "sort_order": 7},
+    {"name": "Gaming", "icon": "🎮", "description": "O'yinlar va kompyuter optimizatorlari", "sort_order": 8},
+    {"name": "Utilitalar", "icon": "🔧", "description": "Tizim utilitalari va sozlamalar", "sort_order": 9},
+    {"name": "Arxivatorlar", "icon": "🗜", "description": "Fayllarni siqish va arxivlash dasturlari", "sort_order": 10},
+    {"name": "Drayverlar", "icon": "📡", "description": "Tizim va qurilma drayverlari", "sort_order": 11},
 ]
 
 
@@ -250,6 +251,7 @@ class CategoryService:
                     cat = await self.create_category(
                         name=item["name"],
                         description=item["description"],
+                        icon=item.get("icon"),
                         sort_order=item["sort_order"]
                     )
                     created_list.append(cat)
