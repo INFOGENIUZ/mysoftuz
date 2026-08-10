@@ -96,16 +96,21 @@ async def user_version_detail_handler(callback: CallbackQuery):
         await safe_answer_callback(callback, "⚠️ Versiya topilmadi")
         return
 
-    badge = "🟢 Joriy (Current) Versiya" if version.is_current else "⚪ Eski Versiya"
+    badge = "🟢 Joriy Versiya" if version.is_current else "⚪ Eski Versiya"
     created_str = version.created_at.strftime("%d.%m.%Y") if version.created_at else "Noma'lum"
 
+    notes = version.release_notes or "Kichik tuzatishlar va optimallashtirish."
+    notes_quoted = "\n> ".join(notes.strip().split("\n"))
+
     detail_text = (
-        f"📦 **{version.program.name.upper()}**\n\n"
-        f"🔢 Versiya: **{version.version}** ({badge})\n"
-        f"📅 Reliz sanasi: **{created_str}**\n"
-        f"💾 Hajm: **{format_size(version.file_size)}**\n\n"
-        f"📝 **Yangiliklar & Reliz eslatmalari:**\n"
-        f"{version.release_notes or 'Kichik tuzatishlar va optimallashtirish.'}"
+        f"📦 **{version.program.name.upper()}**\n"
+        f"━━━━━━━━━━━━━━━━━━━━━\n"
+        f"🔢 **Versiya:** `{version.version}` ({badge})\n"
+        f"📅 **Reliz sanasi:** `{created_str}`\n"
+        f"💾 **Fayl hajmi:** `{format_size(version.file_size)}`\n"
+        f"━━━━━━━━━━━━━━━━━━━━━\n\n"
+        f"📝 **YANGILIKLAR & ESOLATMALAR:**\n"
+        f"> {notes_quoted}"
     )
 
     from aiogram.utils.keyboard import InlineKeyboardBuilder
@@ -151,9 +156,11 @@ async def user_version_download_handler(callback: CallbackQuery, bot: Bot):
             return
 
         caption = (
-            f"💻 **{program.name}**\n\n"
-            f"🔢 Versiya: **{version.version}**\n"
-            f"📦 Hajmi: **{format_size(version.file_size)}**"
+            f"📥 **{program.name}** (v{version.version})\n\n"
+            f"✅ *Fayl yuklab olish uchun tayyor!*\n"
+            f"▫️ **Versiya:** `{version.version}`\n"
+            f"▫️ **Fayl hajmi:** `{format_size(version.file_size)}`\n\n"
+            f"🚀 *Bizning botimizdan foydalanganingiz uchun rahmat!*"
         )
 
         try:

@@ -165,14 +165,17 @@ async def admin_program_view_handler(callback: CallbackQuery, is_admin: bool = F
 
     status_str = "🟢 Faol" if program.is_active else "🔴 Nofaol"
     detail_text = (
-        f"💻 **{program.name.upper()}**\n\n"
-        f"📂 Kategoriya: **{cat_name}**\n"
-        f"⭐ Versiya: **{program.version or 'Noma\'lum'}**\n"
-        f"💾 Hajmi: **{format_size(program.file_size)}**\n"
-        f"💻 Arxitektura: **{program.architecture or 'x64'}**\n"
-        f"🟢 Holati: **{status_str}**\n\n"
-        f"📥 Yuklab olingan: **{program.downloads_count:,} ta**\n\n"
-        f"🆔 ID: **{program.id}**"
+        f"⚙️ **[ADMIN VIEW] {program.name.upper()}**\n"
+        f"━━━━━━━━━━━━━━━━━━━━━\n"
+        f"🆔 **ID:** `{program.id}`\n"
+        f"📂 **Kategoriya:** `{cat_name}`\n"
+        f"🟢 **Holati:** `{status_str}`\n"
+        f"🔥 **Yuklab olishlar:** `{program.downloads_count:,} marta`\n\n"
+        f"📦 **TEXNIK MA'LUMOTLAR:**\n"
+        f"▫️ **Versiya:** `{program.version or 'Noma\'lum'}`\n"
+        f"▫️ **Arxitektura:** `{program.architecture or 'x64'}`\n"
+        f"▫️ **Fayl hajmi:** `{format_size(program.file_size)}`\n"
+        f"━━━━━━━━━━━━━━━━━━━━━"
     )
 
     kb = build_admin_program_detail_keyboard(program, user_role=admin_role)

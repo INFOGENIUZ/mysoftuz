@@ -33,7 +33,7 @@ def format_size(size_bytes: int) -> str:
 
 
 @router.callback_query(F.data.startswith("program:view:"))
-async def program_view_handler(callback: CallbackQuery):
+async def program_view_handler(callback: CallbackQuery, state=None):
     await callback.answer()
     try:
         program_id = int(callback.data.split(":")[-1])
@@ -63,20 +63,30 @@ async def program_view_handler(callback: CallbackQuery):
         # 3. Check user's own rating
         user_rating = await rating_service.get_user_rating(user_id, program_id)
 
-    rating_avg_str = f"⭐ **{program.rating_average:.1f} / 5** ({program.rating_count:,} ta baho)"
-    my_rating_str = f"⭐ Sizning bahoyingiz: **{user_rating} / 5**" if user_rating else "⭐ Siz hali baho bermagansiz."
+    cat_name = program.category.name if program.category else "Noma'lum"
+    rating_avg_str = f"⭐ `{program.rating_average:.1f} / 5` _({program.rating_count:,} ta baho)_"
+    my_rating_str = f"⭐ `{user_rating} / 5`" if user_rating else "⭐ _Hali baholanmagan_"
+    downloads_str = f"`{program.downloads_count:,} marta`"
+
+    desc = program.description or program.short_description or "Tavsif mavjud emas."
+    # Format description lines for blockquote styling
+    desc_quoted = "\n> ".join(desc.strip().split("\n"))
 
     detail_text = (
-        f"💻 **{program.name.upper()}**\n\n"
-        f"📂 Kategoriya: **{program.category.name if program.category else 'Noma\'lum'}**\n"
-        f"{rating_avg_str}\n"
-        f"{my_rating_str}\n"
-        f"📥 Yuklab olishlar: **{program.downloads_count:,} ta**\n\n"
-        f"⭐ Versiya: **{program.version or 'Noma\'lum'}**\n"
-        f"💻 Arxitektura: **{program.architecture or 'x64'}**\n"
-        f"🖥 Tizim: **{program.system_requirements or 'Windows 10 / 11'}**\n"
-        f"💾 Hajmi: **{format_size(program.file_size)}**\n\n"
-        f"📝 {program.description or program.short_description or 'Tavsif mavjud emas.'}"
+        f"💎 **{program.name.upper()}**\n"
+        f"━━━━━━━━━━━━━━━━━━━━━\n"
+        f"📂 **Kategoriya:** `{cat_name}`\n"
+        f"📊 **Reyting:** {rating_avg_str}\n"
+        f"👤 **Sizning bahoyingiz:** {my_rating_str}\n"
+        f"🔥 **Yuklab olishlar:** {downloads_str}\n\n"
+        f"⚙️ **TEXNIK XUSUSIYATLARI:**\n"
+        f"▫️ **Versiya:** `{program.version or 'Noma\'lum'}`\n"
+        f"▫️ **Arxitektura:** `{program.architecture or 'x64'}`\n"
+        f"▫️ **Tizim talabi:** `{program.system_requirements or 'Windows 10 / 11'}`\n"
+        f"▫️ **Fayl hajmi:** `{format_size(program.file_size)}`\n"
+        f"━━━━━━━━━━━━━━━━━━━━━\n\n"
+        f"📝 **DASTUR HAQIDA:**\n"
+        f"> {desc_quoted}"
     )
 
     kb = build_program_detail_keyboard(program, is_favorite=is_fav)
@@ -127,9 +137,11 @@ async def program_download_handler(callback: CallbackQuery, bot: Bot):
                 return
 
             caption = (
-                f"💻 **{program.name}**\n\n"
-                f"⭐ Versiya: **{program.version or 'Noma\'lum'}**\n"
-                f"📦 Hajmi: **{format_size(program.file_size)}**"
+                f"📥 **{program.name}**\n\n"
+                f"✅ *Fayl yuklab olish uchun tayyor!*\n"
+                f"▫️ **Versiya:** `{program.version or 'Noma\'lum'}`\n"
+                f"▫️ **Fayl hajmi:** `{format_size(program.file_size)}`\n\n"
+                f"🚀 *Bizning botimizdan foydalanganingiz uchun rahmat!*"
             )
 
             try:
