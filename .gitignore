@@ -1,0 +1,30 @@
+# Environment variables & secrets
+.env
+.env.*
+!.env.example
+
+# Databases & data directory
+data/
+*.db
+*.sqlite
+*.sqlite3
+
+# Logs & scratch files
+*.log
+logs/
+scratch/
+
+# Python & Virtual Environments
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+
+# IDEs & System
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+.system_generated/
