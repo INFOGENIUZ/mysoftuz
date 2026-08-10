@@ -1,6 +1,9 @@
+import html
 import logging
 from aiogram import Router, F, Bot
 from aiogram.types import CallbackQuery
+from aiogram.utils.keyboard import InlineKeyboardBuilder
+from aiogram.types import InlineKeyboardButton
 from app.config import settings
 from app.database.engine import async_session_maker
 from app.services.version_service import VersionService
@@ -40,17 +43,18 @@ async def user_version_list_handler(callback: CallbackQuery):
 
         program = await prog_service.get_program_by_id(program_id)
         versions, total_pages = await version_service.get_version_history_paginated(program_id, page=1, page_size=10)
+        prog_name = program.name if program else "Dastur"
 
-    prog_name = program.name if program else "Dastur"
     if not versions:
         await safe_answer_callback(callback, "📦 Bu dastur uchun versiyalar tarixi mavjud emas.")
         return
 
-    text = f"📦 **{prog_name.upper()} VERSIYALAR TARIXI** (Sahifa 1/{total_pages}):"
+    safe_prog_name = html.escape(prog_name)
+    text = f"📦 <b>{safe_prog_name.upper()} VERSIYALAR TARIXI</b> (Sahifa 1/{total_pages}):"
     kb = build_versions_history_keyboard(program_id, versions, current_page=1, total_pages=total_pages)
 
     if callback.message:
-        await callback.message.edit_text(text, reply_markup=kb, parse_mode="Markdown")
+        await callback.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
 
 
 @router.callback_query(F.data.startswith("version:page:"))
@@ -71,13 +75,14 @@ async def user_version_page_handler(callback: CallbackQuery):
 
         program = await prog_service.get_program_by_id(program_id)
         versions, total_pages = await version_service.get_version_history_paginated(program_id, page=page, page_size=10)
+        prog_name = program.name if program else "Dastur"
 
-    prog_name = program.name if program else "Dastur"
-    text = f"📦 **{prog_name.upper()} VERSIYALAR TARIXI** (Sahifa {page}/{total_pages}):"
+    safe_prog_name = html.escape(prog_name)
+    text = f"📦 <b>{safe_prog_name.upper()} VERSIYALAR TARIXI</b> (Sahifa {page}/{total_pages}):"
     kb = build_versions_history_keyboard(program_id, versions, current_page=page, total_pages=total_pages)
 
     if callback.message:
-        await callback.message.edit_text(text, reply_markup=kb, parse_mode="Markdown")
+        await callback.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
 
 
 @router.callback_query(F.data.startswith("version:view:"))
@@ -91,40 +96,48 @@ async def user_version_detail_handler(callback: CallbackQuery):
     async with async_session_maker() as session:
         version_service = VersionService(session)
         version = await version_service.get_version_by_id(version_id)
+        if not version:
+            await safe_answer_callback(callback, "⚠️ Versiya topilmadi")
+            return
 
-    if not version:
-        await safe_answer_callback(callback, "⚠️ Versiya topilmadi")
-        return
+        prog_name = version.program.name if version.program else "Dastur"
+        prog_id = version.program_id
+        ver_str = version.version
+        is_curr = version.is_current
+        created_at_dt = version.created_at
+        ver_file_size = version.file_size
+        rel_notes = version.release_notes
 
-    badge = "🟢 Joriy Versiya" if version.is_current else "⚪ Eski Versiya"
-    created_str = version.created_at.strftime("%d.%m.%Y") if version.created_at else "Noma'lum"
+    badge = "🟢 Joriy Versiya" if is_curr else "⚪ Eski Versiya"
+    created_str = created_at_dt.strftime("%d.%m.%Y") if created_at_dt else "Noma'lum"
 
-    notes = version.release_notes or "Kichik tuzatishlar va optimallashtirish."
-    notes_quoted = "\n> ".join(notes.strip().split("\n"))
+    notes = rel_notes or "Kichik tuzatishlar va optimallashtirish."
+
+    safe_prog_name = html.escape(prog_name)
+    safe_ver = html.escape(ver_str or "Noma'lum")
+    safe_notes = html.escape(notes.strip())
 
     detail_text = (
-        f"📦 **{version.program.name.upper()}**\n"
-        f"━━━━━━━━━━━━━━━━━━━━━\n"
-        f"🔢 **Versiya:** `{version.version}` ({badge})\n"
-        f"📅 **Reliz sanasi:** `{created_str}`\n"
-        f"💾 **Fayl hajmi:** `{format_size(version.file_size)}`\n"
-        f"━━━━━━━━━━━━━━━━━━━━━\n\n"
-        f"📝 **YANGILIKLAR & ESOLATMALAR:**\n"
-        f"> {notes_quoted}"
+        f"📦 <b>{safe_prog_name.upper()}</b>\n"
+        f"--------------------\n"
+        f"🔢 <b>Versiya:</b> <code>{safe_ver}</code> ({badge})\n"
+        f"📅 <b>Reliz sanasi:</b> <code>{created_str}</code>\n"
+        f"💾 <b>Fayl hajmi:</b> <code>{format_size(ver_file_size)}</code>\n"
+        f"--------------------\n\n"
+        f"📝 <b>YANGILIKLAR & ESLATMALAR:</b>\n"
+        f"{safe_notes}"
     )
 
-    from aiogram.utils.keyboard import InlineKeyboardBuilder
-    from aiogram.types import InlineKeyboardButton
     builder = InlineKeyboardBuilder()
     builder.row(
-        InlineKeyboardButton(text="📥 Ushbu versiyani yuklab olish", callback_data=f"version:download:{version.id}")
+        InlineKeyboardButton(text="📥 Ushbu versiyani yuklab olish", callback_data=f"version:download:{version_id}")
     )
     builder.row(
-        InlineKeyboardButton(text="🔙 Versiyalar tarixi", callback_data=f"version:list:{version.program_id}")
+        InlineKeyboardButton(text="🔙 Versiyalar tarixi", callback_data=f"version:list:{prog_id}")
     )
 
     if callback.message:
-        await callback.message.edit_text(detail_text, reply_markup=builder.as_markup(), parse_mode="Markdown")
+        await callback.message.edit_text(detail_text, reply_markup=builder.as_markup(), parse_mode="HTML")
 
 
 @router.callback_query(F.data.startswith("version:download:"))
@@ -149,36 +162,73 @@ async def user_version_download_handler(callback: CallbackQuery, bot: Bot):
             await callback.answer("⚠️ Versiya topilmadi", show_alert=True)
             return
 
+        prog_id = version.program_id
+        file_id = version.file_id
+        ver_str = version.version
+        ver_size = version.file_size
+
         try:
-            _, program = await dl_service.validate_downloadable_program(user_id, version.program_id)
+            _, program = await dl_service.validate_downloadable_program(user_id, prog_id)
+            prog_name = program.name
         except DownloadError as de:
             await callback.answer(str(de), show_alert=True)
             return
 
-        caption = (
-            f"📥 **{program.name}** (v{version.version})\n\n"
-            f"✅ *Fayl yuklab olish uchun tayyor!*\n"
-            f"▫️ **Versiya:** `{version.version}`\n"
-            f"▫️ **Fayl hajmi:** `{format_size(version.file_size)}`\n\n"
-            f"🚀 *Bizning botimizdan foydalanganingiz uchun rahmat!*"
-        )
+    safe_prog_name = html.escape(prog_name or "Dastur")
+    safe_ver = html.escape(ver_str or "Noma'lum")
 
+    caption = (
+        f"📥 <b>{safe_prog_name}</b> (v{safe_ver})\n\n"
+        f"✅ <i>Fayl yuklab olish uchun tayyor!</i>\n"
+        f"▫️ <b>Versiya:</b> <code>{safe_ver}</code>\n"
+        f"▫️ <b>Fayl hajmi:</b> <code>{format_size(ver_size)}</code>\n\n"
+        f"🚀 <i>Bizning botimizdan foydalanganingiz uchun rahmat!</i>"
+    )
+
+    plain_caption = (
+        f"📥 {prog_name} (v{ver_str})\n\n"
+        f"Fayl yuklab olish uchun tayyor!\n"
+        f"Versiya: {ver_str}\n"
+        f"Fayl hajmi: {format_size(ver_size)}\n\n"
+        f"Bizning botimizdan foydalanganingiz uchun rahmat!"
+    )
+
+    try:
+        await bot.send_document(
+            chat_id=user_id,
+            document=file_id,
+            caption=caption,
+            parse_mode="HTML"
+        )
+        async with async_session_maker() as session:
+            dl_service = DownloadService(session)
+            await dl_service.record_download(user_id, prog_id, version_id=version_id)
+
+        if callback.message:
+            try:
+                await callback.message.delete()
+            except Exception as del_err:
+                logger.warning(f"Could not delete version message: {del_err}")
+    except Exception as tg_err:
+        logger.error(f"Failed to send version document: {tg_err}")
         try:
             await bot.send_document(
                 chat_id=user_id,
-                document=version.file_id,
-                caption=caption,
-                parse_mode="Markdown"
+                document=file_id,
+                caption=plain_caption
             )
-            # Record download transaction
-            await dl_service.record_download(user_id, program.id, version_id=version.id)
+            async with async_session_maker() as session:
+                dl_service = DownloadService(session)
+                await dl_service.record_download(user_id, prog_id, version_id=version_id)
+
             if callback.message:
                 try:
                     await callback.message.delete()
                 except Exception as del_err:
                     logger.warning(f"Could not delete version message: {del_err}")
-        except Exception as tg_err:
-            logger.error(f"Failed to send version document: {tg_err}")
+        except Exception as tg_err2:
+            logger.error(f"Failed to send version document fallback: {tg_err2}")
             if callback.message:
-                await callback.message.answer("⚠️ Faylni yuborishda xatolik yuz berdi. Iltimos, keyinroq qayta urinib ko'ring.")
-
+                await callback.message.answer(
+                    "⚠️ Faylni yuborishda xatolik yuz berdi. Versiya fayli (file_id) yaroqsiz bo'lishi mumkin."
+                )

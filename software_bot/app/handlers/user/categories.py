@@ -1,3 +1,4 @@
+import html
 from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery
 from aiogram.fsm.context import FSMContext
@@ -24,13 +25,13 @@ async def user_categories_list_handler(event: Message | CallbackQuery):
             page=1, page_size=settings.CATEGORIES_PER_PAGE
         )
 
-    text = "📂 **DASTUR KATEGORIYALARI**\n\nKerakli kategoriyani tanlang:"
+    text = "📂 <b>DASTUR KATEGORIYALARI</b>\n\nKerakli kategoriyani tanlang:"
     kb = build_categories_keyboard(categories, current_page=1, total_pages=total_pages)
 
     if isinstance(event, Message):
-        await event.answer(text=text, reply_markup=kb, parse_mode="Markdown")
+        await event.answer(text=text, reply_markup=kb, parse_mode="HTML")
     elif isinstance(event, CallbackQuery) and event.message:
-        await event.message.edit_text(text=text, reply_markup=kb, parse_mode="Markdown")
+        await event.message.edit_text(text=text, reply_markup=kb, parse_mode="HTML")
 
 
 categories_menu_handler = user_categories_list_handler
@@ -50,11 +51,11 @@ async def categories_page_handler(callback: CallbackQuery):
             page=page, page_size=settings.CATEGORIES_PER_PAGE
         )
 
-    text = f"📂 **DASTUR KATEGORIYALARI** (Sahifa {page}/{total_pages})\n\nKerakli kategoriyani tanlang:"
+    text = f"📂 <b>DASTUR KATEGORIYALARI</b> (Sahifa {page}/{total_pages})\n\nKerakli kategoriyani tanlang:"
     kb = build_categories_keyboard(categories, current_page=page, total_pages=total_pages)
 
     if callback.message:
-        await callback.message.edit_text(text=text, reply_markup=kb, parse_mode="Markdown")
+        await callback.message.edit_text(text=text, reply_markup=kb, parse_mode="HTML")
 
 
 @router.callback_query(F.data.startswith("category:view:"))
@@ -75,22 +76,23 @@ async def category_view_handler(callback: CallbackQuery, state: FSMContext):
             await safe_answer_callback(callback, "⚠️ Bu kategoriya mavjud emas yoki nofaol qilingan.")
             return
 
+        cat_name = category.name or "Kategoriya"
         programs, total_pages = await prog_service.get_programs_by_category_paginated(
             category_id=category_id, page=1, page_size=settings.PROGRAMS_PER_PAGE
         )
+        kb = build_category_programs_keyboard(programs, category_id=category_id, current_page=1, total_pages=total_pages)
 
     # Save Navigation Context
     await NavigationContext.save_nav_context(state, source="category", category_id=category_id, page=1)
 
+    safe_cat_name = html.escape(cat_name)
     if not programs:
-        text = f"📂 **{category.name.upper()}**\n\n📂 Bu kategoriyada hozircha dasturlar mavjud emas."
+        text = f"📂 <b>{safe_cat_name.upper()}</b>\n\n📂 Bu kategoriyada hozircha dasturlar mavjud emas."
     else:
-        text = f"📂 **{category.name.upper()}**\n\nUshbu kategoriyada mavjud dasturlar:"
-
-    kb = build_category_programs_keyboard(programs, category_id=category_id, current_page=1, total_pages=total_pages)
+        text = f"📂 <b>{safe_cat_name.upper()}</b>\n\nUshbu kategoriyada mavjud dasturlar:"
 
     if callback.message:
-        await callback.message.edit_text(text=text, reply_markup=kb, parse_mode="Markdown")
+        await callback.message.edit_text(text=text, reply_markup=kb, parse_mode="HTML")
 
 
 @router.callback_query(F.data.startswith("category:page:"))
@@ -114,15 +116,17 @@ async def user_category_programs_page_handler(callback: CallbackQuery, state: FS
             await safe_answer_callback(callback, "⚠️ Bu kategoriya mavjud emas.")
             return
 
+        cat_name = category.name or "Kategoriya"
         programs, total_pages = await prog_service.get_programs_by_category_paginated(
             category_id=category_id, page=page, page_size=settings.PROGRAMS_PER_PAGE
         )
+        kb = build_category_programs_keyboard(programs, category_id=category_id, current_page=page, total_pages=total_pages)
 
     # Save Navigation Context
     await NavigationContext.save_nav_context(state, source="category", category_id=category_id, page=page)
 
-    text = f"📂 **{category.name.upper()}** (Sahifa {page}/{total_pages})\n\nUshbu kategoriyada mavjud dasturlar:"
-    kb = build_category_programs_keyboard(programs, category_id=category_id, current_page=page, total_pages=total_pages)
+    safe_cat_name = html.escape(cat_name)
+    text = f"📂 <b>{safe_cat_name.upper()}</b> (Sahifa {page}/{total_pages})\n\nUshbu kategoriyada mavjud dasturlar:"
 
     if callback.message:
-        await callback.message.edit_text(text=text, reply_markup=kb, parse_mode="Markdown")
+        await callback.message.edit_text(text=text, reply_markup=kb, parse_mode="HTML")

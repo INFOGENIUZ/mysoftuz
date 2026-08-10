@@ -37,12 +37,18 @@ async def global_error_handler(event: ErrorEvent, is_admin: bool = False):
         try:
             await update.message.answer(safe_msg, parse_mode="Markdown")
         except Exception:
-            pass
+            try:
+                await update.message.answer(safe_msg)
+            except Exception:
+                pass
     elif update.callback_query:
         try:
             await update.callback_query.answer("⚠️ Xatolik yuz berdi.", show_alert=True)
             if update.callback_query.message:
-                await update.callback_query.message.answer(safe_msg, parse_mode="Markdown")
+                try:
+                    await update.callback_query.message.answer(safe_msg, parse_mode="Markdown")
+                except Exception:
+                    await update.callback_query.message.answer(safe_msg)
         except Exception:
             pass
 
